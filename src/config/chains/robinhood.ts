@@ -95,10 +95,9 @@ export const robinhoodConfig: ChainConfig = {
     // nextTokenId() is 474,835, while totalSupply() and tokenOfOwnerByIndex()
     // both REVERT — the same shape as BSC, so enumeration needs an index.
     POSITION_MANAGER: '0x58daec3116aae6D93017bAAea7749052E8a04fA7' as Address,
-    // No v4 subgraph is published for this chain. Position ownership is
-    // therefore unanswerable and FEATURES.v4Positions gates that half off; the
-    // POOLS catalog falls back to the indexer's own directory. Swapping and
-    // pool discovery depend on neither index — they probe the rungs below.
+    // No v4 subgraph is published for this chain. Discover position candidates
+    // from Blockscout transfers and verify ownership through PositionManager.
+    // The pools catalog falls back to the indexer's own directory.
     positionSubgraph: null,
     poolSubgraph: null,
     // Scoped to `launchpad.tokenFactory` below — Uniswap's shared UERC20

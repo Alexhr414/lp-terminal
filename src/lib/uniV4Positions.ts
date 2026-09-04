@@ -1,4 +1,6 @@
 import { zeroAddress, type Address, type Hex, type PublicClient } from 'viem'
+import { fetchV4TransferIds } from './v4TransferIds'
+import { FEATURES } from '../config/features'
 import { erc20Abi } from '../abi'
 import { CHAIN } from '../config/chains'
 import { getAmountsForLiquidity, getSqrtRatioAtTick } from './clmath'
@@ -36,7 +38,7 @@ import type { ClPool, ClPosition, TokenInfo } from '../types'
  */
 const V4 = CHAIN.uniV4
 
-export const HAS_V4_POSITIONS = V4 !== null && V4.positionSubgraph !== null
+export const HAS_V4_POSITIONS = FEATURES.v4Positions
 
 /**
  * An upper bound on ids read per wallet, so one address cannot stall a refresh.
@@ -224,7 +226,7 @@ export async function verifyV4PositionMetadata(
  * and reads exactly like a wallet holding no positions.
  */
 async function fetchTokenIds(user: Address): Promise<bigint[]> {
-  if (!V4?.positionSubgraph) return []
+  if (!V4 || !HAS_V4_POSITIONS) return []
   const owner = user.toLowerCase()
   const key = walletKey(user)
   const hit = idCache.get(key)
@@ -233,6 +235,11 @@ async function fetchTokenIds(user: Address): Promise<bigint[]> {
 
   const p = (async () => {
     try {
+      if (!V4.positionSubgraph) {
+        const ids = await fetchV4TransferIds(CHAIN.explorer.url, V4.POSITION_MANAGER, user)
+        idCache.set(key, ids)
+        return ids
+      }
       const data = await graphQuery<{ positions: { tokenId: string }[] }>(
         deploymentUrl(V4.positionSubgraph!),
         `query($owner: String!, $first: Int!) {
@@ -268,7 +275,7 @@ export async function fetchV4Positions(
   user: Address,
 ): Promise<{ cl: ClPosition[]; tokens: Record<string, TokenInfo> }> {
   const none = { cl: [], tokens: {} }
-  if (!V4?.positionSubgraph) return none
+  if (!V4 || !HAS_V4_POSITIONS) return none
   const ids = await fetchTokenIds(user)
   if (ids.length === 0) return none
 
